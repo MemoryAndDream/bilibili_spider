@@ -22,7 +22,7 @@ def get_author_info(mid):
     return sex
 
 def get_video_info(aid):
-    info_url = 'https://api.bilibili.com/x/web-interface/view?aid=%s'%aid
+    info_url = 'https://api.bilibili.com/x/web-interface/view?aid=%s&cid=104953812'%aid
     video_info = ct.get(info_url)
     video_info = json.loads(video_info)
     stat = video_info.get('data').get('stat')
@@ -40,21 +40,19 @@ if __name__ == "__main__":
     video_infos = {}
 
     print(start_date,end_date)
-    fout = open('result%s.csv'%end_date, 'w', newline='',encoding='utf8')
+    fout = open('result%s.csv'%end_date, 'w', newline='')
     csv_writer = csv.writer(fout)
-    csv_writer.writerow(['video_id','type','title','author','view_count','danmu_count','coin_count','pubdate','favorite_count','like_count','share_count'])
-    for page_no in range(1,51,1):# 这里页数手动写
-        try:
-            start_url = 'https://s.search.bilibili.com/cate/search?callback=jqueryCallback_bili_11801710727724113&main_ver=v3&search_type=video&view_type=hot_rank&order=click&copy_right=-1&cate_id=157&page=%s&pagesize=20&jsonp=jsonp&time_from=%s&time_to=%s&_=%s'%(page_no,start_date,end_date,time_stamp)
+    csv_writer.writerow(['video_id','title','author','author_gender','view_count','danmu_count','coin_count',
+                         'pubdate','favorite_count','like_count','share_count','reply'])
+    for page_no in range(1,1000,1):
+        try: # cate_id=157对应美妆
+            start_url = 'https://s.search.bilibili.com/cate/search?callback=&main_ver=v3&search_type=video&view_type=hot_rank&order=click&copy_right=-1&cate_id=157&page=%s&pagesize=20&jsonp=jsonp&time_from=%s&time_to=%s&_=%s'%(page_no,start_date,end_date,time_stamp)
             print(start_url)
             page_buf = ct.get(start_url).decode('utf8')
             print(page_buf)
             json_str = ct.getRegex('(\{.*\})',page_buf)
-            # type = '动画'
-            # start_url =  'https://api.bilibili.com/x/space/arc/search?mid=20165629&ps=30&tid=0&pn=%s&keyword=&order=pubdate&jsonp=jsonp'%page_no
-            # page_buf = ct.get(start_url)
-            values = json.loads(page_buf)
-            video_results = values['data']['list']['vlist']
+            values = json.loads(json_str)
+            video_results = values['result']
             for video_result in video_results:
                 video_id = video_result['id']
                 pubdate = video_result['pubdate'] # 发布日期
@@ -65,18 +63,21 @@ if __name__ == "__main__":
                 author_id = video_result['mid'] # 作者id
                 author = video_result['author'] # 作者名
                 print(title)
-                # try:
-                #     sex = get_author_info(author_id)
-                # except Exception as e:
-                #     sex = ''
-                #     print(e)
+                try:
+                    sex = get_author_info(author_id)
+                except Exception as e:
+                    sex = ''
+                    print(e)
                 try:
                     coin, like, share, favorite,reply = get_video_info(video_id)
                 except Exception as e:
                     coin, like, share, favorite,reply = '','','','',''
                     print(e)
-                csv_writer.writerow([video_id,type,title,author,play,video_review,coin,pubdate,favorite,like,share])
+                csv_writer.writerow([video_id,title,author,sex,play,video_review,coin,pubdate,favorite,like,share,reply])
                 fout.flush() # 中途保存
+            max_page = int(values['numPages'])
+            if page_no >= max_page:
+                break
         except Exception as e:
             print(e)
 
